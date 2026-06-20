@@ -12,22 +12,25 @@ function usuarioParaEmail(u) {
   return u.toLowerCase().replace(/[^a-z0-9._-]/g, '') + '@despacho.local';
 }
 
-function mostrarLogin() {
-  document.getElementById('login-screen').style.display  = 'flex';
-  document.getElementById('app-root').style.display      = 'none';
-  document.getElementById('access-denied').style.display = 'none';
+function mostrarSpinner() {
+  const el = document.getElementById('page-loader');
+  if (el) el.style.display = 'flex';
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-root').style.display     = 'none';
 }
-function mostrarNegado() {
-  document.getElementById('login-screen').style.display  = 'none';
-  document.getElementById('app-root').style.display      = 'none';
-  document.getElementById('access-denied').style.display = 'flex';
+function mostrarLogin() {
+  const el = document.getElementById('page-loader');
+  if (el) el.style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app-root').style.display     = 'none';
 }
 function mostrarApp(profile) {
-  document.getElementById('login-screen').style.display  = 'none';
-  document.getElementById('app-root').style.display      = '';
-  document.getElementById('access-denied').style.display = 'none';
+  const el = document.getElementById('page-loader');
+  if (el) el.style.display = 'none';
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-root').style.display     = '';
   const nameEl = document.getElementById('header-user-name');
-  if (nameEl) nameEl.textContent = profile.nome || profile.usuario || '';
+  if (nameEl) nameEl.textContent = profile?.nome || profile?.usuario || '';
 }
 
 auth.onAuthStateChanged(async (user) => {
@@ -35,9 +38,13 @@ auth.onAuthStateChanged(async (user) => {
   try {
     const snap = await db.collection(COL_USERS).doc(user.uid).get();
     const profile = snap.exists ? snap.data() : null;
-    if (!profile || profile.role !== 'admin') { mostrarNegado(); return; }
+    // Só admins acessam o Report
+    if (!profile || profile.role !== 'admin') {
+      window.location.replace('index.html');
+      return;
+    }
     mostrarApp(profile);
-  } catch { mostrarNegado(); }
+  } catch { mostrarLogin(); }
 });
 
 document.getElementById('login-form').addEventListener('submit', async (e) => {
@@ -66,7 +73,6 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 });
 
 document.getElementById('logout-btn')?.addEventListener('click', () => auth.signOut());
-document.getElementById('denied-logout-btn')?.addEventListener('click', () => auth.signOut());
 
 /* ── PERSISTÊNCIA LOCAL ─────────────────────────────── */
 const STORAGE_KEY = 'painel_ml_relatorios';

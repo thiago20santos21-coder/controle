@@ -1,317 +1,92 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Painel Logístico · Mercado Livre</title>
-<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
-<link rel="stylesheet" href="style.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-<script src="js/firebase-config.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controle de Docas · DESPACHO</title>
+
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    :root {
+      --bg: #0B0F1A;
+      --bg-elevated: #11172A;
+      --surface: #161D33;
+      --surface-2: #1D2540;
+      --border: #2A3354;
+      --border-soft: #232B47;
+      --text: #F4F1E8;
+      --text-muted: #9CA6C4;
+      --text-faint: #707CA0;
+      --gold: #C9A350;
+      --gold-soft: #E3C57E;
+      --gold-dark: #8C6F2E;
+      --gold-bg: rgba(201, 163, 80, 0.10);
+      --blue: #5B8DEF;
+      --blue-bg: rgba(91, 141, 239, 0.10);
+      --red: #E5483D;
+      --red-bg: rgba(229, 72, 61, 0.12);
+      --green: #34C77B;
+      --green-bg: rgba(52, 199, 123, 0.12);
+      --amber: #E0A23B;
+      --amber-bg: rgba(224, 162, 59, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    .font-display { font-family: 'Space Grotesk', 'Inter', sans-serif; }
+    .font-data { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+    input::placeholder, textarea::placeholder { color: var(--text-faint); }
+    select { color-scheme: dark; }
+
+    @keyframes pulse-emergency {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(229, 72, 61, 0.5); }
+      50% { box-shadow: 0 0 0 8px rgba(229, 72, 61, 0); }
+    }
+    .emergency-pulse { animation: pulse-emergency 1.8s ease-out infinite; }
+
+    @keyframes ping-slow {
+      0% { transform: scale(0.9); opacity: 0.7; }
+      100% { transform: scale(1.8); opacity: 0; }
+    }
+    .ping-ring { animation: ping-slow 1.4s cubic-bezier(0,0,0.2,1) infinite; }
+
+    @keyframes shake-once {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-6px); }
+      40% { transform: translateX(6px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(4px); }
+    }
+    .shake-once { animation: shake-once 0.4s ease-in-out; }
+
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+  </style>
 </head>
 <body>
+  <div id="root"></div>
 
-<!-- ── TELA DE LOGIN ── -->
-<div id="login-screen" class="login-screen">
-  <div class="login-box">
-    <img class="login-logo" src="https://bring.com.br/blog/wp-content/uploads/2018/05/Mercado-Livre-logo.png" alt="Mercado Livre">
-    <h1 class="login-title">Painel Logístico</h1>
-    <p class="login-sub">Acesso restrito a operadores autorizados</p>
-    <form id="login-form" class="login-form">
-      <div class="fld">
-        <label>Usuário</label>
-        <input type="text" id="login-usuario" placeholder="seu.usuario" autocomplete="username" autocapitalize="none" required>
-      </div>
-      <div class="fld">
-        <label>Senha</label>
-        <input type="password" id="login-senha" placeholder="••••••••" autocomplete="current-password" required>
-      </div>
-      <div id="login-error" class="login-error" style="display:none;"></div>
-      <button type="submit" class="btn btn-primary" id="login-submit-btn" style="margin-top:6px;">
-        <i class="ti ti-login-2"></i>Entrar
-      </button>
-    </form>
-  </div>
-</div>
-
-<!-- ── ACESSO NEGADO ── -->
-<div id="access-denied" style="display:none;min-height:100vh;background:var(--bg, #F5F5F5);display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;text-align:center;padding:20px;">
-  <i class="ti ti-shield-off" style="font-size:56px;color:#E8222E;"></i>
-  <strong style="font-size:20px;">Acesso Restrito</strong>
-  <p style="color:#666;font-size:14px;max-width:280px;">Seu usuário não tem permissão de administrador. Entre em contato com o responsável.</p>
-  <button id="denied-logout-btn" class="btn btn-outline" style="margin-top:8px;">Sair</button>
-</div>
-
-<!-- ── APLICAÇÃO PRINCIPAL ── -->
-<div id="app-root" class="app-root" style="display:none;">
-
-  <header class="header">
-    <a class="header-brand" href="#">
-      <img class="header-logo" src="https://bring.com.br/blog/wp-content/uploads/2018/05/Mercado-Livre-logo.png" alt="Mercado Livre">
-    </a>
-    <div class="header-div"></div>
-    <span class="header-label">Painel Operacional</span>
-    <div class="header-right">
-      <span id="header-date"></span>
-      <span id="header-clock"></span>
-      <div class="header-badge">Logística</div>
-      <a href="admin.html" class="header-admin-btn" title="Controle de Docas">
-        <i class="ti ti-shield-lock"></i>Controle de Docas
-      </a>
-      <div class="header-user">
-        <span class="header-user-email" id="header-user-name"></span>
-        <button class="header-logout-btn" id="logout-btn" title="Sair">
-          <i class="ti ti-logout"></i>
-        </button>
-      </div>
-    </div>
-  </header>
-
-  <div class="layout">
-    <nav class="sidebar" aria-label="Navegação">
-      <div class="sidebar-sec">Relatórios</div>
-      <div class="nav-item active" id="nav-form" data-tab="form"><i class="ti ti-file-plus"></i>Novo relatório</div>
-      <div class="nav-item" id="nav-hist" data-tab="hist"><i class="ti ti-history"></i>Histórico</div>
-      <div class="sidebar-foot">
-        <div class="sidebar-foot-txt">Mercado Livre · Operações<br>Dados salvos no navegador</div>
-      </div>
-    </nav>
-
-    <main class="main">
-
-      <!-- ── NOVO RELATÓRIO ── -->
-      <section class="panel active" id="panel-form">
-        <div class="breadcrumb"><i class="ti ti-home"></i><span>Início</span><i class="ti ti-chevron-right"></i><span>Novo relatório</span></div>
-        <div class="pg-title">Novo relatório diário</div>
-        <div class="pg-sub">Preencha os dados do turno e gere o texto para envio. · <strong id="pg-date-display" style="color:var(--ml-blue);"></strong></div>
-
-        <div class="card">
-          <div class="card-title"><i class="ti ti-clock"></i>Configuração do turno</div>
-          <div class="g2">
-            <div class="fld full">
-              <label>Horário de corte (ETD)</label>
-              <select id="etd">
-                <option value="03">ETD das 03:00</option>
-                <option value="01">ETD das 01:00</option>
-                <option value="22">ETD das 22:00</option>
-                <option value="21">ETD das 21:00</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title"><i class="ti ti-package"></i>Pedidos</div>
-          <div class="g2">
-            <div class="fld"><label>Total de pedidos <span class="req-mark">*</span></label><input type="number" inputmode="numeric" id="totalPedidos" placeholder="Ex: 1200" min="0"></div>
-            <div class="fld"><label>Total shippados <span class="req-mark">*</span></label><input type="number" inputmode="numeric" id="totalShippados" placeholder="Ex: 1180" min="0"></div>
-            <div class="fld">
-              <label>Total de ruptura</label>
-              <div class="inline-inc">
-                <input type="number" inputmode="numeric" id="ruptura" placeholder="0" min="0">
-                <button class="btn-quick-inc" data-target="ruptura" data-val="0" type="button">0</button>
-                <button class="btn-quick-inc" data-target="ruptura" data-add="1" type="button">+1</button>
-              </div>
-            </div>
-            <div class="fld"><label>Taxa de shipagem</label><div class="computed" id="taxaShip">—</div></div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title"><i class="ti ti-box"></i>Packed por motivo</div>
-          <div class="g2">
-            <div class="fld">
-              <label>Desvio operacional</label>
-              <div class="inline-inc">
-                <input type="number" inputmode="numeric" id="packedDesvio" placeholder="0" min="0">
-                <button class="btn-quick-inc" data-target="packedDesvio" data-val="0" type="button">0</button>
-                <button class="btn-quick-inc" data-target="packedDesvio" data-add="1" type="button">+1</button>
-              </div>
-            </div>
-            <div class="fld">
-              <label>Atraso fluxo OUT</label>
-              <div class="inline-inc">
-                <input type="number" inputmode="numeric" id="packedAtraso" placeholder="0" min="0">
-                <button class="btn-quick-inc" data-target="packedAtraso" data-val="0" type="button">0</button>
-                <button class="btn-quick-inc" data-target="packedAtraso" data-add="1" type="button">+1</button>
-              </div>
-            </div>
-            <div class="fld">
-              <label>Travado</label>
-              <div class="inline-inc">
-                <input type="number" inputmode="numeric" id="packedTravado" placeholder="0" min="0">
-                <button class="btn-quick-inc" data-target="packedTravado" data-val="0" type="button">0</button>
-                <button class="btn-quick-inc" data-target="packedTravado" data-add="1" type="button">+1</button>
-              </div>
-            </div>
-            <div class="fld">
-              <label>RTP (atraso fluxo)</label>
-              <div class="inline-inc">
-                <input type="number" inputmode="numeric" id="rtpRtp" placeholder="0" min="0">
-                <button class="btn-quick-inc" data-target="rtpRtp" data-val="0" type="button">0</button>
-                <button class="btn-quick-inc" data-target="rtpRtp" data-add="1" type="button">+1</button>
-              </div>
-            </div>
-            <div class="fld">
-              <label>RTW (replen)</label>
-              <div class="inline-inc">
-                <input type="number" inputmode="numeric" id="rtwReplen" placeholder="0" min="0">
-                <button class="btn-quick-inc" data-target="rtwReplen" data-val="0" type="button">0</button>
-                <button class="btn-quick-inc" data-target="rtwReplen" data-add="1" type="button">+1</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title"><i class="ti ti-stack-2"></i>HU &amp; SPP</div>
-          <div class="g2">
-            <div class="fld">
-              <label>HU In</label>
-              <div class="inline-inc">
-                <input type="number" inputmode="numeric" id="huIn" placeholder="0" min="0">
-                <button class="btn-quick-inc" data-target="huIn" data-val="0" type="button">0</button>
-                <button class="btn-quick-inc" data-target="huIn" data-add="1" type="button">+1</button>
-              </div>
-            </div>
-            <div class="fld">
-              <label>HU Closed</label>
-              <div class="inline-inc">
-                <input type="number" inputmode="numeric" id="huClosed" placeholder="0" min="0">
-                <button class="btn-quick-inc" data-target="huClosed" data-val="0" type="button">0</button>
-                <button class="btn-quick-inc" data-target="huClosed" data-add="1" type="button">+1</button>
-              </div>
-            </div>
-            <div class="fld"><label>SPP projetado (%)</label><input type="number" id="sppProj" placeholder="99.5" step="0.1" min="0" max="100"></div>
-            <div class="fld">
-              <label>SPP real (%)</label>
-              <input type="number" id="sppReal" placeholder="99.1" step="0.1" min="0" max="100">
-              <div class="spp-csv-upload">
-                <input type="file" id="csvSppFile" accept=".csv" style="display:none;">
-                <button class="spp-csv-btn" type="button" id="btn-csv-spp">
-                  <i class="ti ti-file-spreadsheet"></i>Calcular via CSV (Doca)
-                </button>
-              </div>
-              <div class="spp-csv-result" id="sppCsvResult"></div>
-            </div>
-            <div class="fld full"><label>Litragem</label><input type="text" id="litragem" placeholder="Ex: 2.400m³"></div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title"><i class="ti ti-target"></i>Indicadores de meta</div>
-          <div class="info-note" style="margin-bottom:14px;"><i class="ti ti-info-circle"></i>OOT e SLA são os únicos indicadores que impactam o atingimento de meta (99%).</div>
-          <div class="kpi-meta-grid">
-            <div class="kpi-meta-card">
-              <div class="kpi-meta-label">OOT <span class="req-mark">*</span><span class="kpi-dot" id="d-oot"></span></div>
-              <div class="kpi-meta-row"><input type="number" id="oot" placeholder="99" step="0.1" min="0" max="100"><span class="unit">%</span></div>
-              <div id="tag-oot"></div>
-            </div>
-            <div class="kpi-meta-card">
-              <div class="kpi-meta-label">SLA / WMS <span class="req-mark">*</span><span class="kpi-dot" id="d-sla"></span></div>
-              <div class="kpi-meta-row"><input type="number" id="sla" placeholder="99" step="0.1" min="0" max="100"><span class="unit">%</span></div>
-              <div id="tag-sla"></div>
-            </div>
-          </div>
-          <div id="liveStatus" style="display:none;"></div>
-        </div>
-
-        <div class="card">
-          <div class="card-title"><i class="ti ti-gauge"></i>Outros indicadores (informativos)</div>
-          <div class="kpi-info-grid">
-            <div class="kpi-info-card">
-              <div class="kpi-info-label">COT</div>
-              <div class="kpi-info-row"><input type="number" id="cot" placeholder="99" step="0.1" min="0" max="100"><span class="unit">%</span></div>
-            </div>
-            <div class="kpi-info-card">
-              <div class="kpi-info-label">DOT</div>
-              <div class="kpi-info-row"><input type="number" id="dot" placeholder="99" step="0.1" min="0" max="100"><span class="unit">%</span></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title"><i class="ti ti-key"></i>Last Key</div>
-          <div class="g1">
-            <div class="fld"><label>Identificador da última chave</label><input type="text" id="lastKey" placeholder="Ex: 12:55 - Rota SP-01"></div>
-          </div>
-        </div>
-
-        <div style="display:flex;gap:10px;margin-top:18px;">
-          <button class="btn btn-primary" id="btnGerar" disabled style="margin-top:0;flex:1;">
-            <i class="ti ti-file-description"></i>Gerar relatório e salvar
-          </button>
-          <button class="btn btn-outline btn-danger" id="btn-limpar-campos" style="padding:13px 20px;border-radius:var(--radius);font-size:14px;">
-            <i class="ti ti-eraser"></i>Limpar
-          </button>
-        </div>
-        <div class="validation-counter" id="validationCounter">
-          <i class="ti ti-alert-circle"></i>
-          <span id="validationText">Preencha os campos essenciais para gerar</span>
-        </div>
-
-        <div id="outWrap" style="display:none;margin-top:18px;">
-          <div class="card">
-            <div class="out-header">
-              <span class="out-label">Texto gerado</span>
-              <div style="display:flex;gap:8px;">
-                <button class="btn-copy" id="btn-copiar"><i class="ti ti-copy" style="font-size:13px;"></i>Copiar</button>
-              </div>
-            </div>
-            <textarea id="output" readonly></textarea>
-            <button class="btn btn-wa" id="btn-whatsapp">
-              <i class="ti ti-brand-whatsapp"></i>Abrir no WhatsApp
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── HISTÓRICO ── -->
-      <section class="panel" id="panel-hist">
-        <div class="breadcrumb"><i class="ti ti-home"></i><span>Início</span><i class="ti ti-chevron-right"></i><span>Histórico</span></div>
-        <div class="pg-title">Histórico de relatórios</div>
-        <div class="pg-sub">Relatórios salvos localmente neste navegador.</div>
-        <div class="hist-toolbar">
-          <span class="hist-count" id="histCount"></span>
-          <div class="hist-actions">
-            <button class="btn btn-green" id="btn-export-csv"><i class="ti ti-table-export"></i>Exportar tudo (CSV)</button>
-            <button class="btn btn-danger" id="btn-limpar-tudo"><i class="ti ti-trash"></i>Limpar tudo</button>
-          </div>
-        </div>
-        <div id="histList"></div>
-      </section>
-
-    </main>
-  </div>
-
-  <nav class="mobile-nav" aria-label="Navegação mobile">
-    <button id="mnav-form" class="active" data-tab="form"><i class="ti ti-file-plus"></i>Relatório</button>
-    <button id="mnav-hist" data-tab="hist"><i class="ti ti-history"></i>Histórico</button>
-  </nav>
-
-</div><!-- /app-root -->
-
-<div id="toast-container" class="toast-container"></div>
-
-<div id="confirm-modal" class="modal-overlay">
-  <div class="modal-box">
-    <div class="modal-header-custom" id="modal-title-el">
-      <i class="ti ti-alert-triangle" style="color:var(--err);font-size:18px;"></i>Confirmar Ação
-    </div>
-    <div class="modal-body-custom" id="modal-message-el">
-      Tem certeza que deseja realizar esta ação?
-    </div>
-    <div class="modal-footer-custom">
-      <button class="modal-btn-cancel" id="modal-cancel-btn">Cancelar</button>
-      <button class="modal-btn-confirm" id="modal-confirm-btn">Confirmar</button>
-    </div>
-  </div>
-</div>
-
-<script src="app.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
