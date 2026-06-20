@@ -24,7 +24,10 @@ function mostrarLogin() {
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('app-root').style.display     = 'none';
 }
+let currentProfile = null;
+
 function mostrarApp(profile) {
+  currentProfile = profile;
   const el = document.getElementById('page-loader');
   if (el) el.style.display = 'none';
   document.getElementById('login-screen').style.display = 'none';
@@ -402,6 +405,7 @@ function gerarRelatorio() {
     ruptura: v('ruptura'), sppProj: v('sppProj'), sppReal: v('sppReal'),
     litragem: v('litragem'), lastKey: v('lastKey'), txt,
     isoLocal: new Date().toISOString(),
+    criadoPor: currentProfile?.nome || currentProfile?.usuario || '',
   };
   db.collection(COL_RELATORIOS).add(rec)
     .then(() => showToast('Relatório gerado e salvo!', 'success'))
@@ -464,7 +468,7 @@ function renderHist() {
     return `<div class="hist-item" data-id="${r.id}">
       <div class="hist-icon"><i class="ti ti-file-text"></i></div>
       <div style="flex:1;">
-        <div class="hist-date">${r.data} · ETD ${r.etd}:00</div>
+        <div class="hist-date">${r.data} · ETD ${r.etd}:00${r.criadoPor ? ` · <span style="color:var(--ml-blue);font-weight:700;">${r.criadoPor}</span>` : ''}</div>
         <div class="hist-meta">Pedidos: ${r.totalPedidos || '—'} &nbsp;·&nbsp; Shippados: ${r.totalShippados || '—'} &nbsp;·&nbsp; Ruptura: ${r.ruptura || '0'}</div>
         <div class="hist-pills">${kpis}</div>
       </div>
