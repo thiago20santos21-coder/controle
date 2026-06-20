@@ -31,6 +31,7 @@ function mostrarApp(profile) {
   document.getElementById('app-root').style.display     = '';
   const nameEl = document.getElementById('header-user-name');
   if (nameEl) nameEl.textContent = profile?.nome || profile?.usuario || '';
+  iniciarListenerRelatorios();
 }
 
 auth.onAuthStateChanged(async (user) => {
@@ -74,21 +75,21 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 
 document.getElementById('logout-btn')?.addEventListener('click', () => auth.signOut());
 
-/* ── PERSISTÊNCIA LOCAL ─────────────────────────────── */
-const STORAGE_KEY = 'painel_ml_relatorios';
+/* ── PERSISTÊNCIA FIRESTORE ─────────────────────────── */
+const COL_RELATORIOS = 'painel_relatorios';
 const metaAtual = 99;
 let reportsCache = [];
+let _relUnsub = null;
 
-function carregarDados() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    reportsCache = raw ? JSON.parse(raw) : [];
-  } catch { reportsCache = []; }
+function iniciarListenerRelatorios() {
+  if (_relUnsub) _relUnsub();
+  _relUnsub = db.collection(COL_RELATORIOS)
+    .orderBy('isoLocal', 'desc')
+    .onSnapshot(snap => {
+      reportsCache = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+      renderHist();
+    }, err => console.error('Firestore relatorios:', err));
 }
-function salvarDados() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(reportsCache));
-}
-carregarDados();
 
 /* ── TOAST ──────────────────────────────────────────── */
 function showToast(message, type = 'success') {
@@ -394,7 +395,7 @@ function gerarRelatorio() {
   setTimeout(() => document.getElementById('outWrap').scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
 
   const rec = {
-    id: Date.now().toString(), data, etd,
+    data, etd,
     oot: parseFloat(oot) || null, sla: parseFloat(sla) || null,
     cot: parseFloat(cot) || null, dot: parseFloat(dot) || null,
     totalPedidos: v('totalPedidos'), totalShippados: v('totalShippados'),
@@ -402,9 +403,9 @@ function gerarRelatorio() {
     litragem: v('litragem'), lastKey: v('lastKey'), txt,
     isoLocal: new Date().toISOString(),
   };
-  reportsCache.unshift(rec);
-  salvarDados();
-  showToast('Relatório gerado e salvo!', 'success');
+  db.collection(COL_RELATORIOS).add(rec)
+    .then(() => showToast('Relatório gerado e salvo!', 'success'))
+    .catch(() => showToast('Erro ao salvar no banco de dados.', 'error'));
   validarFormulario();
 }
 document.getElementById('btnGerar').addEventListener('click', gerarRelatorio);
@@ -490,16 +491,17 @@ function verRel(id) {
 
 function deletar(id) {
   abrirModalConfirmacao('Remover Relatório', 'Tem certeza que deseja remover este relatório?', () => {
-    reportsCache = reportsCache.filter(r => r.id !== id);
-    salvarDados(); renderHist();
-    showToast('Relatório removido!', 'success');
+    db.collection(COL_RELATORIOS).doc(id).delete()
+      .then(() => showToast('Relatório removido!', 'success'))
+      .catch(() => showToast('Erro ao remover.', 'error'));
   });
 }
 
 function limparTudo() {
   abrirModalConfirmacao('Limpar Histórico', 'ATENÇÃO: isso apagará TODOS os relatórios. Esta ação não pode ser desfeita. Deseja continuar?', () => {
-    reportsCache = []; salvarDados(); renderHist();
-    showToast('Histórico limpo!', 'info');
+    Promise.all(reportsCache.map(r => db.collection(COL_RELATORIOS).doc(r.id).delete()))
+      .then(() => showToast('Histórico limpo!', 'info'))
+      .catch(() => showToast('Erro ao limpar.', 'error'));
   });
 }
 document.getElementById('btn-limpar-tudo').addEventListener('click', limparTudo);
