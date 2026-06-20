@@ -25,6 +25,14 @@ function mostrarLogin() {
   document.getElementById('app-root').style.display     = 'none';
 }
 let currentProfile = null;
+let currentUser = null;
+
+function nomeDoAdmin() {
+  const nome = currentProfile?.nome || currentProfile?.usuario || '';
+  if (nome) return nome;
+  const email = currentUser?.email || '';
+  return email.replace('@despacho.local', '') || email;
+}
 
 function mostrarApp(profile) {
   currentProfile = profile;
@@ -38,6 +46,7 @@ function mostrarApp(profile) {
 }
 
 auth.onAuthStateChanged(async (user) => {
+  currentUser = user;
   if (!user) { mostrarLogin(); return; }
   try {
     const snap = await db.collection(COL_USERS).doc(user.uid).get();
@@ -405,7 +414,7 @@ function gerarRelatorio() {
     ruptura: v('ruptura'), sppProj: v('sppProj'), sppReal: v('sppReal'),
     litragem: v('litragem'), lastKey: v('lastKey'), txt,
     isoLocal: new Date().toISOString(),
-    criadoPor: currentProfile?.nome || currentProfile?.usuario || '',
+    criadoPor: nomeDoAdmin(),
   };
   db.collection(COL_RELATORIOS).add(rec)
     .then(() => showToast('Relatório gerado e salvo!', 'success'))
