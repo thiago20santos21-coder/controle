@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel Logístico · Mercado Livre</title>
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="style.css">
+
+<!-- Bibliotecas externas -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+</head>
+<body>
+
+<div id="app-root" class="app-root">
+
+  <header class="header">
+    <a class="header-brand" href="#">
+      <img class="header-logo" src="https://bring.com.br/blog/wp-content/uploads/2018/05/Mercado-Livre-logo.png" alt="Mercado Livre">
+    </a>
+    <div class="header-div"></div>
+    <span class="header-label">Painel Operacional</span>
+    <div class="header-right">
+      <span id="header-date"></span>
+      <span id="header-clock"></span>
+      <div class="header-badge">Logística</div>
+      <a href="admin.html" class="header-admin-btn" title="Painel Administrativo">
+        <i class="ti ti-shield-lock"></i>Admin
+      </a>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar" aria-label="Navegação">
+      <div class="sidebar-sec">Relatórios</div>
+      <div class="nav-item active" id="nav-form" data-tab="form"><i class="ti ti-file-plus"></i>Novo relatório</div>
+      <div class="nav-item" id="nav-hist" data-tab="hist"><i class="ti ti-history"></i>Histórico</div>
+      <div class="sidebar-foot">
+        <div class="sidebar-foot-txt">Mercado Livre · Operações<br>Dados salvos no navegador</div>
+      </div>
+    </nav>
+
+    <main class="main">
+
+      <!-- ── NOVO RELATÓRIO ── -->
+      <section class="panel active" id="panel-form">
+        <div class="breadcrumb"><i class="ti ti-home"></i><span>Início</span><i class="ti ti-chevron-right"></i><span>Novo relatório</span></div>
+        <div class="pg-title">Novo relatório diário</div>
+        <div class="pg-sub">Preencha os dados do turno e gere o texto para envio. · <strong id="pg-date-display" style="color:var(--ml-blue);"></strong></div>
+
+
+        <div class="card">
+          <div class="card-title"><i class="ti ti-clock"></i>Configuração do turno</div>
+          <div class="g2">
+            <div class="fld full">
+              <label>Horário de corte (ETD)</label>
+              <select id="etd">
+                <option value="03">ETD das 03:00</option>
+                <option value="01">ETD das 01:00</option>
+                <option value="22">ETD das 22:00</option>
+                <option value="21">ETD das 21:00</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><i class="ti ti-package"></i>Pedidos</div>
+          <div class="g2">
+            <div class="fld"><label>Total de pedidos <span class="req-mark">*</span></label><input type="number" inputmode="numeric" id="totalPedidos" placeholder="Ex: 1200" min="0"></div>
+            <div class="fld"><label>Total shippados <span class="req-mark">*</span></label><input type="number" inputmode="numeric" id="totalShippados" placeholder="Ex: 1180" min="0"></div>
+            <div class="fld">
+              <label>Total de ruptura</label>
+              <div class="inline-inc">
+                <input type="number" inputmode="numeric" id="ruptura" placeholder="0" min="0">
+                <button class="btn-quick-inc" data-target="ruptura" data-val="0" type="button">0</button>
+                <button class="btn-quick-inc" data-target="ruptura" data-add="1" type="button">+1</button>
+              </div>
+            </div>
+            <div class="fld"><label>Taxa de shipagem</label><div class="computed" id="taxaShip">—</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><i class="ti ti-box"></i>Packed por motivo</div>
+          <div class="g2">
+            <div class="fld">
+              <label>Desvio operacional</label>
+              <div class="inline-inc">
+                <input type="number" inputmode="numeric" id="packedDesvio" placeholder="0" min="0">
+                <button class="btn-quick-inc" data-target="packedDesvio" data-val="0" type="button">0</button>
+                <button class="btn-quick-inc" data-target="packedDesvio" data-add="1" type="button">+1</button>
+              </div>
+            </div>
+            <div class="fld">
+              <label>Atraso fluxo OUT</label>
+              <div class="inline-inc">
+                <input type="number" inputmode="numeric" id="packedAtraso" placeholder="0" min="0">
+                <button class="btn-quick-inc" data-target="packedAtraso" data-val="0" type="button">0</button>
+                <button class="btn-quick-inc" data-target="packedAtraso" data-add="1" type="button">+1</button>
+              </div>
+            </div>
+            <div class="fld">
+              <label>Travado</label>
+              <div class="inline-inc">
+                <input type="number" inputmode="numeric" id="packedTravado" placeholder="0" min="0">
+                <button class="btn-quick-inc" data-target="packedTravado" data-val="0" type="button">0</button>
+                <button class="btn-quick-inc" data-target="packedTravado" data-add="1" type="button">+1</button>
+              </div>
+            </div>
+            <div class="fld">
+              <label>RTP (atraso fluxo)</label>
+              <div class="inline-inc">
+                <input type="number" inputmode="numeric" id="rtpRtp" placeholder="0" min="0">
+                <button class="btn-quick-inc" data-target="rtpRtp" data-val="0" type="button">0</button>
+                <button class="btn-quick-inc" data-target="rtpRtp" data-add="1" type="button">+1</button>
+              </div>
+            </div>
+            <div class="fld">
+              <label>RTW (replen)</label>
+              <div class="inline-inc">
+                <input type="number" inputmode="numeric" id="rtwReplen" placeholder="0" min="0">
+                <button class="btn-quick-inc" data-target="rtwReplen" data-val="0" type="button">0</button>
+                <button class="btn-quick-inc" data-target="rtwReplen" data-add="1" type="button">+1</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><i class="ti ti-stack-2"></i>HU &amp; SPP</div>
+          <div class="g2">
+            <div class="fld">
+              <label>HU In</label>
+              <div class="inline-inc">
+                <input type="number" inputmode="numeric" id="huIn" placeholder="0" min="0">
+                <button class="btn-quick-inc" data-target="huIn" data-val="0" type="button">0</button>
+                <button class="btn-quick-inc" data-target="huIn" data-add="1" type="button">+1</button>
+              </div>
+            </div>
+            <div class="fld">
+              <label>HU Closed</label>
+              <div class="inline-inc">
+                <input type="number" inputmode="numeric" id="huClosed" placeholder="0" min="0">
+                <button class="btn-quick-inc" data-target="huClosed" data-val="0" type="button">0</button>
+                <button class="btn-quick-inc" data-target="huClosed" data-add="1" type="button">+1</button>
+              </div>
+            </div>
+            <div class="fld"><label>SPP projetado (%)</label><input type="number" id="sppProj" placeholder="99.5" step="0.1" min="0" max="100"></div>
+            <div class="fld">
+              <label>SPP real (%)</label>
+              <input type="number" id="sppReal" placeholder="99.1" step="0.1" min="0" max="100">
+              <div class="spp-csv-upload">
+                <input type="file" id="csvSppFile" accept=".csv" style="display:none;">
+                <button class="spp-csv-btn" type="button" id="btn-csv-spp">
+                  <i class="ti ti-file-spreadsheet"></i>Calcular via CSV (Doca)
+                </button>
+              </div>
+              <div class="spp-csv-result" id="sppCsvResult"></div>
+            </div>
+            <div class="fld full"><label>Litragem</label><input type="text" id="litragem" placeholder="Ex: 2.400m³"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><i class="ti ti-target"></i>Indicadores de meta</div>
+          <div class="info-note" style="margin-bottom:14px;"><i class="ti ti-info-circle"></i>OOT e SLA são os únicos indicadores que impactam o atingimento de meta (99%).</div>
+          <div class="kpi-meta-grid">
+            <div class="kpi-meta-card">
+              <div class="kpi-meta-label">OOT <span class="req-mark">*</span><span class="kpi-dot" id="d-oot"></span></div>
+              <div class="kpi-meta-row"><input type="number" id="oot" placeholder="99" step="0.1" min="0" max="100"><span class="unit">%</span></div>
+              <div id="tag-oot"></div>
+            </div>
+            <div class="kpi-meta-card">
+              <div class="kpi-meta-label">SLA / WMS <span class="req-mark">*</span><span class="kpi-dot" id="d-sla"></span></div>
+              <div class="kpi-meta-row"><input type="number" id="sla" placeholder="99" step="0.1" min="0" max="100"><span class="unit">%</span></div>
+              <div id="tag-sla"></div>
+            </div>
+          </div>
+          <div id="liveStatus" style="display:none;"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><i class="ti ti-gauge"></i>Outros indicadores (informativos)</div>
+          <div class="kpi-info-grid">
+            <div class="kpi-info-card">
+              <div class="kpi-info-label">COT</div>
+              <div class="kpi-info-row"><input type="number" id="cot" placeholder="99" step="0.1" min="0" max="100"><span class="unit">%</span></div>
+            </div>
+            <div class="kpi-info-card">
+              <div class="kpi-info-label">DOT</div>
+              <div class="kpi-info-row"><input type="number" id="dot" placeholder="99" step="0.1" min="0" max="100"><span class="unit">%</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><i class="ti ti-key"></i>Last Key</div>
+          <div class="g1">
+            <div class="fld"><label>Identificador da última chave</label><input type="text" id="lastKey" placeholder="Ex: 12:55 - Rota SP-01"></div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:18px;">
+          <button class="btn btn-primary" id="btnGerar" disabled style="margin-top:0;flex:1;">
+            <i class="ti ti-file-description"></i>Gerar relatório e salvar
+          </button>
+          <button class="btn btn-outline btn-danger" id="btn-limpar-campos" style="padding:13px 20px;border-radius:var(--radius);font-size:14px;">
+            <i class="ti ti-eraser"></i>Limpar
+          </button>
+        </div>
+        <div class="validation-counter" id="validationCounter">
+          <i class="ti ti-alert-circle"></i>
+          <span id="validationText">Preencha os campos essenciais para gerar</span>
+        </div>
+
+        <div id="outWrap" style="display:none;margin-top:18px;">
+          <div class="card">
+            <div class="out-header">
+              <span class="out-label">Texto gerado</span>
+              <div style="display:flex;gap:8px;">
+                <button class="btn-copy" id="btn-copiar"><i class="ti ti-copy" style="font-size:13px;"></i>Copiar</button>
+              </div>
+            </div>
+            <textarea id="output" readonly></textarea>
+            <button class="btn btn-wa" id="btn-whatsapp">
+              <i class="ti ti-brand-whatsapp"></i>Abrir no WhatsApp
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── HISTÓRICO ── -->
+      <section class="panel" id="panel-hist">
+        <div class="breadcrumb"><i class="ti ti-home"></i><span>Início</span><i class="ti ti-chevron-right"></i><span>Histórico</span></div>
+        <div class="pg-title">Histórico de relatórios</div>
+        <div class="pg-sub">Relatórios salvos localmente neste navegador.</div>
+        <div class="hist-toolbar">
+          <span class="hist-count" id="histCount"></span>
+          <div class="hist-actions">
+            <button class="btn btn-green" id="btn-export-csv"><i class="ti ti-table-export"></i>Exportar tudo (CSV)</button>
+            <button class="btn btn-danger" id="btn-limpar-tudo"><i class="ti ti-trash"></i>Limpar tudo</button>
+          </div>
+        </div>
+        <div id="histList"></div>
+      </section>
+
+    </main>
+  </div>
+
+  <nav class="mobile-nav" aria-label="Navegação mobile">
+    <button id="mnav-form" class="active" data-tab="form"><i class="ti ti-file-plus"></i>Relatório</button>
+    <button id="mnav-hist" data-tab="hist"><i class="ti ti-history"></i>Histórico</button>
+  </nav>
+
+</div><!-- /app-root -->
+
+<!-- Toast container -->
+<div id="toast-container" class="toast-container"></div>
+
+<!-- Modal de confirmação -->
+<div id="confirm-modal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header-custom" id="modal-title-el">
+      <i class="ti ti-alert-triangle" style="color:var(--err);font-size:18px;"></i>Confirmar Ação
+    </div>
+    <div class="modal-body-custom" id="modal-message-el">
+      Tem certeza que deseja realizar esta ação?
+    </div>
+    <div class="modal-footer-custom">
+      <button class="modal-btn-cancel" id="modal-cancel-btn">Cancelar</button>
+      <button class="modal-btn-confirm" id="modal-confirm-btn">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
