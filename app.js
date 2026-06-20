@@ -1,12 +1,78 @@
 // ════════════════════════════════════════════════════════
-// app.js — armazenamento local (localStorage), sem Firebase
+// app.js — Painel Logístico com autenticação Firebase
 // ════════════════════════════════════════════════════════
 
+/* ── FIREBASE AUTH ──────────────────────────────────── */
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+const COL_USERS = 'controleCarga_users';
+
+function usuarioParaEmail(u) {
+  return u.toLowerCase().replace(/[^a-z0-9._-]/g, '') + '@despacho.local';
+}
+
+function mostrarLogin() {
+  document.getElementById('login-screen').style.display  = 'flex';
+  document.getElementById('app-root').style.display      = 'none';
+  document.getElementById('access-denied').style.display = 'none';
+}
+function mostrarNegado() {
+  document.getElementById('login-screen').style.display  = 'none';
+  document.getElementById('app-root').style.display      = 'none';
+  document.getElementById('access-denied').style.display = 'flex';
+}
+function mostrarApp(profile) {
+  document.getElementById('login-screen').style.display  = 'none';
+  document.getElementById('app-root').style.display      = '';
+  document.getElementById('access-denied').style.display = 'none';
+  const nameEl = document.getElementById('header-user-name');
+  if (nameEl) nameEl.textContent = profile.nome || profile.usuario || '';
+}
+
+auth.onAuthStateChanged(async (user) => {
+  if (!user) { mostrarLogin(); return; }
+  try {
+    const snap = await db.collection(COL_USERS).doc(user.uid).get();
+    const profile = snap.exists ? snap.data() : null;
+    if (!profile || profile.role !== 'admin') { mostrarNegado(); return; }
+    mostrarApp(profile);
+  } catch { mostrarNegado(); }
+});
+
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn   = document.getElementById('login-submit-btn');
+  const errEl = document.getElementById('login-error');
+  const usuario = document.getElementById('login-usuario').value.trim();
+  const senha   = document.getElementById('login-senha').value;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2"></i>Entrando...';
+  errEl.style.display = 'none';
+  try {
+    await auth.signInWithEmailAndPassword(usuarioParaEmail(usuario), senha);
+  } catch (err) {
+    const msgs = {
+      'auth/user-not-found':    'Usuário não encontrado.',
+      'auth/wrong-password':    'Senha incorreta.',
+      'auth/invalid-credential':'Usuário ou senha incorretos.',
+      'auth/too-many-requests': 'Muitas tentativas. Aguarde.',
+    };
+    errEl.textContent  = msgs[err.code] || 'Erro ao entrar. Verifique seus dados.';
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-login-2"></i>Entrar';
+  }
+});
+
+document.getElementById('logout-btn')?.addEventListener('click', () => auth.signOut());
+document.getElementById('denied-logout-btn')?.addEventListener('click', () => auth.signOut());
+
+/* ── PERSISTÊNCIA LOCAL ─────────────────────────────── */
 const STORAGE_KEY = 'painel_ml_relatorios';
 const metaAtual = 99;
 let reportsCache = [];
 
-/* ── PERSISTÊNCIA LOCAL ─────────────────────────────── */
 function carregarDados() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -38,10 +104,10 @@ function showToast(message, type = 'success') {
 }
 
 /* ── MODAL DE CONFIRMAÇÃO ───────────────────────────── */
-const modalOverlay   = document.getElementById('confirm-modal');
-const modalTitleEl   = document.getElementById('modal-title-el');
-const modalMsgEl     = document.getElementById('modal-message-el');
-const modalCancelBtn = document.getElementById('modal-cancel-btn');
+const modalOverlay    = document.getElementById('confirm-modal');
+const modalTitleEl    = document.getElementById('modal-title-el');
+const modalMsgEl      = document.getElementById('modal-message-el');
+const modalCancelBtn  = document.getElementById('modal-cancel-btn');
 const modalConfirmBtn = document.getElementById('modal-confirm-btn');
 let modalCallback = null;
 
@@ -87,7 +153,7 @@ function updateHeaderClock() {
 }
 function updateDateDisplay() {
   const now = new Date();
-  const dias = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+  const dias  = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
   const meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   const dataFormatada = `${dias[now.getDay()]}, ${now.getDate()} de ${meses[now.getMonth()]} de ${now.getFullYear()}`;
   const dateEl = document.getElementById('header-date');
@@ -176,7 +242,6 @@ function liveFlags() {
   const el = document.getElementById('liveStatus');
   if (!vals.length) { el.style.display = 'none'; return; }
   const status = calcStatus(vals);
-  const cls = status;
   const ico = status === 'ok' ? 'ti-circle-check' : status === 'warn' ? 'ti-alert-triangle' : 'ti-circle-x';
   const msg = status === 'ok'
     ? 'Todos os indicadores dentro do objetivo (≥ 99%)'
@@ -184,7 +249,7 @@ function liveFlags() {
     ? 'Indicador(es) entre 98% e 99% — atenção'
     : 'Indicador(es) abaixo de 98% — fora da meta';
   el.style.display = 'flex';
-  el.className = 'status-bar ' + cls;
+  el.className = 'status-bar ' + status;
   el.innerHTML = `<i class="ti ${ico}"></i>${msg}`;
 }
 ['oot', 'sla', 'cot', 'dot'].forEach(id => document.getElementById(id).addEventListener('input', liveFlags));
@@ -230,8 +295,7 @@ function limparNumeroCsv(valor) {
   if (!valor) return 0;
   valor = valor.replace(/"/g, '').trim();
   if (valor === '') return 0;
-  valor = valor.replace(/\./g, '');
-  valor = valor.replace(',', '.');
+  valor = valor.replace(/\./g, '').replace(',', '.');
   const numero = parseFloat(valor);
   return isNaN(numero) ? 0 : numero;
 }
@@ -239,31 +303,22 @@ function limparNumeroCsv(valor) {
 function processarCSVParaSPP(inputEl) {
   const arquivo = inputEl.files[0];
   if (!arquivo) return;
-
   const leitor = new FileReader();
   leitor.onload = function (e) {
     const textoCsv = e.target.result;
     const linhas = textoCsv.split('\n');
-    if (linhas.length < 2) {
-      showToast('Arquivo vazio ou sem dados suficientes.', 'error');
-      inputEl.value = '';
-      return;
-    }
-
+    if (linhas.length < 2) { showToast('Arquivo vazio ou sem dados suficientes.', 'error'); inputEl.value = ''; return; }
     const cabecalho = linhas[0].split(';');
     let indicePacotes = -1, indicePosicoes = -1;
     for (let i = 0; i < cabecalho.length; i++) {
       const nomeColuna = cabecalho[i].replace(/"/g, '').trim();
-      if (nomeColuna === 'QTDE PACOTES') indicePacotes = i;
+      if (nomeColuna === 'QTDE PACOTES')    indicePacotes  = i;
       if (nomeColuna === 'QTDE DE POSIÇÕES') indicePosicoes = i;
     }
-
     if (indicePacotes === -1 || indicePosicoes === -1) {
       showToast('Colunas "QTDE PACOTES" ou "QTDE DE POSIÇÕES" não encontradas no CSV.', 'error');
-      inputEl.value = '';
-      return;
+      inputEl.value = ''; return;
     }
-
     let somaPacotes = 0, somaPosicoes = 0;
     for (let i = 1; i < linhas.length; i++) {
       const linha = linhas[i].trim();
@@ -274,14 +329,11 @@ function processarCSVParaSPP(inputEl) {
         somaPosicoes += limparNumeroCsv(colunas[indicePosicoes]);
       }
     }
-
-    let media = somaPosicoes > 0 ? somaPacotes / somaPosicoes : 0;
+    const media = somaPosicoes > 0 ? somaPacotes / somaPosicoes : 0;
     const mediaFormatada = media.toFixed(2);
-
     const sppRealEl = document.getElementById('sppReal');
     sppRealEl.value = mediaFormatada;
     sppRealEl.dispatchEvent(new Event('input', { bubbles: true }));
-
     const resultEl = document.getElementById('sppCsvResult');
     resultEl.innerHTML = `
       <div class="csv-detail">
@@ -290,7 +342,6 @@ function processarCSVParaSPP(inputEl) {
       </div>
       <div style="margin-top:4px;">📊 Média: <strong>${media.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong> pacotes/posição → preenchido como SPP Real</div>`;
     resultEl.style.display = 'block';
-
     showToast(`SPP Real preenchido automaticamente: ${mediaFormatada}%`, 'success');
     inputEl.value = '';
   };
@@ -302,15 +353,14 @@ document.getElementById('csvSppFile').addEventListener('change', (e) => processa
 /* ── GERAR RELATÓRIO E SALVAR ───────────────────────── */
 function gerarRelatorio() {
   const data = new Date().toLocaleDateString('pt-BR');
-  const etd = document.getElementById('etd').value;
-  const oot = document.getElementById('oot').value;
-  const sla = document.getElementById('sla').value;
-  const cot = document.getElementById('cot').value;
-  const dot = document.getElementById('dot').value;
+  const etd  = document.getElementById('etd').value;
+  const oot  = document.getElementById('oot').value;
+  const sla  = document.getElementById('sla').value;
+  const cot  = document.getElementById('cot').value;
+  const dot  = document.getElementById('dot').value;
   const allVals = [oot, sla, cot, dot].map(Number).filter(v => !isNaN(v) && v > 0);
   const status = calcStatus(allVals);
   const si = status === 'ok' ? '✅✅✅' : status === 'warn' ? '⚠️⚠️⚠️' : '❌❌❌';
-
   const v = id => document.getElementById(id).value;
 
   const txt =
@@ -338,8 +388,7 @@ function gerarRelatorio() {
   setTimeout(() => document.getElementById('outWrap').scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
 
   const rec = {
-    id: Date.now().toString(),
-    data, etd,
+    id: Date.now().toString(), data, etd,
     oot: parseFloat(oot) || null, sla: parseFloat(sla) || null,
     cot: parseFloat(cot) || null, dot: parseFloat(dot) || null,
     totalPedidos: v('totalPedidos'), totalShippados: v('totalShippados'),
@@ -347,7 +396,6 @@ function gerarRelatorio() {
     litragem: v('litragem'), lastKey: v('lastKey'), txt,
     isoLocal: new Date().toISOString(),
   };
-
   reportsCache.unshift(rec);
   salvarDados();
   showToast('Relatório gerado e salvo!', 'success');
@@ -374,16 +422,12 @@ function limparCampos() {
     REQUIRED_FIELDS.concat([
       'ruptura','packedDesvio','packedAtraso','packedTravado','rtpRtp','rtwReplen',
       'huIn','huClosed','sppProj','sppReal','litragem','cot','dot','lastKey'
-    ]).forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = '';
-    });
+    ]).forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     document.getElementById('etd').selectedIndex = 0;
     document.getElementById('sppCsvResult').style.display = 'none';
     document.getElementById('outWrap').style.display = 'none';
     const taxaEl = document.getElementById('taxaShip');
-    taxaEl.textContent = '—';
-    taxaEl.style.color = '';
+    taxaEl.textContent = '—'; taxaEl.style.color = '';
     ['oot', 'sla'].forEach(id => {
       document.getElementById('d-' + id).className = 'kpi-dot';
       document.getElementById('tag-' + id).innerHTML = '';
@@ -422,10 +466,7 @@ function renderHist() {
   }).join('');
 
   el.querySelectorAll('.hist-item').forEach(item => {
-    item.addEventListener('click', (e) => {
-      if (e.target.closest('.hist-del')) return;
-      verRel(item.dataset.id);
-    });
+    item.addEventListener('click', (e) => { if (e.target.closest('.hist-del')) return; verRel(item.dataset.id); });
   });
   el.querySelectorAll('.hist-del').forEach(btn => {
     btn.addEventListener('click', (e) => { e.stopPropagation(); deletar(btn.dataset.id); });
@@ -444,17 +485,14 @@ function verRel(id) {
 function deletar(id) {
   abrirModalConfirmacao('Remover Relatório', 'Tem certeza que deseja remover este relatório?', () => {
     reportsCache = reportsCache.filter(r => r.id !== id);
-    salvarDados();
-    renderHist();
+    salvarDados(); renderHist();
     showToast('Relatório removido!', 'success');
   });
 }
 
 function limparTudo() {
   abrirModalConfirmacao('Limpar Histórico', 'ATENÇÃO: isso apagará TODOS os relatórios. Esta ação não pode ser desfeita. Deseja continuar?', () => {
-    reportsCache = [];
-    salvarDados();
-    renderHist();
+    reportsCache = []; salvarDados(); renderHist();
     showToast('Histórico limpo!', 'info');
   });
 }
@@ -465,25 +503,24 @@ function dlCSV(content, fname) {
   const blob = new Blob(['﻿' + content], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = fname;
-  a.click();
+  a.href = url; a.download = fname; a.click();
   URL.revokeObjectURL(url);
 }
 function obterDataAtualParaNome() {
   const d = new Date();
-  return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+  return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
 }
 function exportarCSV() {
   const arr = reportsCache;
   if (!arr.length) { showToast('Não há relatórios para exportar.', 'warning'); return; }
   const cols = ['Data','ETD','Total Pedidos','Total Shippados','Ruptura','SPP Proj','SPP Real','Litragem','OOT','SLA','COT','DOT','Last Key'];
-  const rows = arr.map(r => [r.data, r.etd, r.totalPedidos, r.totalShippados, r.ruptura, r.sppProj, r.sppReal, r.litragem, r.oot, r.sla, r.cot, r.dot, r.lastKey]
-    .map(v => `"${(v ?? '').toString().replace(/"/g, '""')}"`).join(';'));
+  const rows = arr.map(r =>
+    [r.data, r.etd, r.totalPedidos, r.totalShippados, r.ruptura, r.sppProj, r.sppReal, r.litragem, r.oot, r.sla, r.cot, r.dot, r.lastKey]
+      .map(v => `"${(v ?? '').toString().replace(/"/g,'""')}"`).join(';'));
   dlCSV([cols.join(';'), ...rows].join('\n'), `relatorios_${obterDataAtualParaNome()}.csv`);
   showToast('CSV exportado!', 'success');
 }
 document.getElementById('btn-export-csv').addEventListener('click', exportarCSV);
-
 
 /* ── INIT ───────────────────────────────────────────── */
 validarFormulario();

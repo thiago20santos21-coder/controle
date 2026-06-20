@@ -7,13 +7,47 @@
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <link rel="stylesheet" href="style.css">
-
-<!-- Bibliotecas externas -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
 </head>
 <body>
 
-<div id="app-root" class="app-root">
+<!-- ── TELA DE LOGIN ── -->
+<div id="login-screen" class="login-screen">
+  <div class="login-box">
+    <img class="login-logo" src="https://bring.com.br/blog/wp-content/uploads/2018/05/Mercado-Livre-logo.png" alt="Mercado Livre">
+    <h1 class="login-title">Painel Logístico</h1>
+    <p class="login-sub">Acesso restrito a operadores autorizados</p>
+    <form id="login-form" class="login-form">
+      <div class="fld">
+        <label>Usuário</label>
+        <input type="text" id="login-usuario" placeholder="seu.usuario" autocomplete="username" autocapitalize="none" required>
+      </div>
+      <div class="fld">
+        <label>Senha</label>
+        <input type="password" id="login-senha" placeholder="••••••••" autocomplete="current-password" required>
+      </div>
+      <div id="login-error" class="login-error" style="display:none;"></div>
+      <button type="submit" class="btn btn-primary" id="login-submit-btn" style="margin-top:6px;">
+        <i class="ti ti-login-2"></i>Entrar
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- ── ACESSO NEGADO ── -->
+<div id="access-denied" style="display:none;min-height:100vh;background:var(--bg, #F5F5F5);display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;text-align:center;padding:20px;">
+  <i class="ti ti-shield-off" style="font-size:56px;color:#E8222E;"></i>
+  <strong style="font-size:20px;">Acesso Restrito</strong>
+  <p style="color:#666;font-size:14px;max-width:280px;">Seu usuário não tem permissão de administrador. Entre em contato com o responsável.</p>
+  <button id="denied-logout-btn" class="btn btn-outline" style="margin-top:8px;">Sair</button>
+</div>
+
+<!-- ── APLICAÇÃO PRINCIPAL ── -->
+<div id="app-root" class="app-root" style="display:none;">
 
   <header class="header">
     <a class="header-brand" href="#">
@@ -25,9 +59,15 @@
       <span id="header-date"></span>
       <span id="header-clock"></span>
       <div class="header-badge">Logística</div>
-      <a href="admin.html" class="header-admin-btn" title="Painel Administrativo">
-        <i class="ti ti-shield-lock"></i>Admin
+      <a href="admin.html" class="header-admin-btn" title="Controle de Docas">
+        <i class="ti ti-shield-lock"></i>Controle de Docas
       </a>
+      <div class="header-user">
+        <span class="header-user-email" id="header-user-name"></span>
+        <button class="header-logout-btn" id="logout-btn" title="Sair">
+          <i class="ti ti-logout"></i>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -48,7 +88,6 @@
         <div class="breadcrumb"><i class="ti ti-home"></i><span>Início</span><i class="ti ti-chevron-right"></i><span>Novo relatório</span></div>
         <div class="pg-title">Novo relatório diário</div>
         <div class="pg-sub">Preencha os dados do turno e gere o texto para envio. · <strong id="pg-date-display" style="color:var(--ml-blue);"></strong></div>
-
 
         <div class="card">
           <div class="card-title"><i class="ti ti-clock"></i>Configuração do turno</div>
@@ -256,10 +295,8 @@
 
 </div><!-- /app-root -->
 
-<!-- Toast container -->
 <div id="toast-container" class="toast-container"></div>
 
-<!-- Modal de confirmação -->
 <div id="confirm-modal" class="modal-overlay">
   <div class="modal-box">
     <div class="modal-header-custom" id="modal-title-el">
