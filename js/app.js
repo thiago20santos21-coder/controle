@@ -111,28 +111,47 @@ function diffComResponsavel(antigo, novo) {
 async function registrarAlteracao(dados) {
   return;
 }
-function tocarAlertaEmergencia() {
+function tocarAlertaEmergencia(vezes = 1) {
   try {
-    const AudioContextClasse = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextClasse) return;
-    const ctx = new AudioContextClasse();
-    const tempos = [0, 0.22, 0.44];
-    tempos.forEach((t) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "square";
-      osc.frequency.value = 880;
-      gain.gain.setValueAtTime(1e-4, ctx.currentTime + t);
-      gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + t + 0.02);
-      gain.gain.exponentialRampToValueAtTime(1e-4, ctx.currentTime + t + 0.18);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(ctx.currentTime + t);
-      osc.stop(ctx.currentTime + t + 0.2);
-    });
-    setTimeout(() => ctx.close(), 900);
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const durTom = 0.38;
+    const gapCiclo = 0.06;
+    const gapRepetição = 0.35;
+    const ciclo = durTom * 2 + gapCiclo;
+    for (let v = 0; v < vezes; v++) {
+      const base = v * (ciclo + gapRepetição);
+      // Tom alto (sirene subindo)
+      const o1 = ctx.createOscillator();
+      const g1 = ctx.createGain();
+      o1.type = "sawtooth";
+      o1.frequency.setValueAtTime(640, ctx.currentTime + base);
+      o1.frequency.linearRampToValueAtTime(1040, ctx.currentTime + base + durTom);
+      g1.gain.setValueAtTime(0, ctx.currentTime + base);
+      g1.gain.linearRampToValueAtTime(0.85, ctx.currentTime + base + 0.04);
+      g1.gain.setValueAtTime(0.85, ctx.currentTime + base + durTom - 0.04);
+      g1.gain.linearRampToValueAtTime(0, ctx.currentTime + base + durTom);
+      o1.connect(g1); g1.connect(ctx.destination);
+      o1.start(ctx.currentTime + base);
+      o1.stop(ctx.currentTime + base + durTom);
+      // Tom baixo (sirene descendo)
+      const o2 = ctx.createOscillator();
+      const g2 = ctx.createGain();
+      o2.type = "sawtooth";
+      o2.frequency.setValueAtTime(1040, ctx.currentTime + base + durTom + gapCiclo);
+      o2.frequency.linearRampToValueAtTime(640, ctx.currentTime + base + durTom * 2 + gapCiclo);
+      g2.gain.setValueAtTime(0, ctx.currentTime + base + durTom + gapCiclo);
+      g2.gain.linearRampToValueAtTime(0.85, ctx.currentTime + base + durTom + gapCiclo + 0.04);
+      g2.gain.setValueAtTime(0.85, ctx.currentTime + base + durTom * 2 + gapCiclo - 0.04);
+      g2.gain.linearRampToValueAtTime(0, ctx.currentTime + base + durTom * 2 + gapCiclo);
+      o2.connect(g2); g2.connect(ctx.destination);
+      o2.start(ctx.currentTime + base + durTom + gapCiclo);
+      o2.stop(ctx.currentTime + base + durTom * 2 + gapCiclo);
+    }
+    setTimeout(() => ctx.close(), (vezes * (ciclo + gapRepetição) + 0.5) * 1000);
   } catch (e) {
-    console.error("Erro ao tocar alerta sonoro:", e);
+    console.error("Erro ao tocar alerta:", e);
   }
 }
 function ConfirmModal({ titulo, mensagem, textoConfirmar = "Confirmar", onConfirmar, onCancelar }) {
@@ -578,6 +597,7 @@ function AdminPanel({ user, profile, onLogout }) {
   const [alteracaoParaApagar, setAlteracaoParaApagar] = useState(null);
   const [confirmandoLimparHistorico, setConfirmandoLimparHistorico] = useState(false);
   const [confirmandoApagarTodasDocas, setConfirmandoApagarTodasDocas] = useState(false);
+  const [filtroDocas, setFiltroDocas] = useState("");
   const chamadosVistosRef = useRef(/* @__PURE__ */ new Set());
   const primeiraCargaRef = useRef(true);
   useEffect(() => {
@@ -620,7 +640,7 @@ function AdminPanel({ user, profile, onLogout }) {
       idsAbertos.forEach((id) => {
         if (!chamadosVistosRef.current.has(id)) temNovo = true;
       });
-      if (temNovo) tocarAlertaEmergencia();
+      if (temNovo) tocarAlertaEmergencia(2);
     }
     chamadosVistosRef.current = idsAbertos;
     primeiraCargaRef.current = false;
@@ -854,11 +874,14 @@ Pacotes: ${totais.pacotes} | Posi\xE7\xF5es: ${totais.posicoes} | Mangas: ${tota
     const d = docas.find((x) => x.id === docaId);
     if (d) setDocaDetalhe(d);
   };
+  const docasFiltradas = filtroDocas.trim()
+    ? docas.filter((d) => (d.numeroDoca || "").toLowerCase().includes(filtroDocas.toLowerCase()) || (d.donoNome || "").toLowerCase().includes(filtroDocas.toLowerCase()) || (d.canalizacao || "").toLowerCase().includes(filtroDocas.toLowerCase()))
+    : docas;
   return /* @__PURE__ */ React.createElement("div", { className: "min-h-screen bg-[var(--bg)] pb-12 font-sans" }, /* @__PURE__ */ React.createElement("header", { className: "bg-[var(--bg-elevated)] border-b border-[var(--border)] px-4 py-3 sticky top-0 z-10" }, /* @__PURE__ */ React.createElement("div", { className: "max-w-2xl mx-auto flex items-center justify-between" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2.5" }, /* @__PURE__ */ React.createElement("div", { className: "bg-[var(--surface)] border border-[var(--gold)]/30 p-1.5 rounded-lg" }, /* @__PURE__ */ React.createElement(Shield, { className: "w-5 h-5 text-[var(--gold)]" })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement("h1", { className: "text-[var(--text)] font-display text-base font-bold tracking-wide leading-none" }, "DESPACHO"), /* @__PURE__ */ React.createElement("span", { className: "text-[9px] font-bold uppercase tracking-wider text-[var(--gold)] border border-[var(--gold)]/40 rounded px-1.5 py-0.5" }, "Admin")), /* @__PURE__ */ React.createElement("p", { className: "text-[var(--text-faint)] text-[10px] font-bold uppercase tracking-wider mt-0.5" }, "Painel Administrativo"))), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ React.createElement("a", { href: "report.html", className: "text-xs font-bold px-3 py-1.5 bg-[var(--gold)] text-[#1A1404] rounded-lg hover:brightness-110 transition-all" }, "Report"), /* @__PURE__ */ React.createElement("span", { className: "text-[var(--text-muted)] text-sm font-semibold hidden sm:inline" }, profile.nome), /* @__PURE__ */ React.createElement("button", { onClick: onLogout, className: "p-2 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--gold)]/50 rounded-lg text-[var(--text-muted)] hover:text-[var(--gold)] transition-colors", title: "Sair" }, /* @__PURE__ */ React.createElement(LogOut, { size: 17 }))))), /* @__PURE__ */ React.createElement("main", { className: "max-w-2xl mx-auto px-4 pt-6" }, /* @__PURE__ */ React.createElement("button", { onClick: handleGerarRelatorio, className: "w-full py-3 bg-[var(--gold)] text-[#1A1404] rounded-xl font-bold mb-6 flex items-center justify-center gap-2 hover:brightness-110 shadow-md" }, /* @__PURE__ */ React.createElement(Clipboard, { size: 18 }), " Gerar Relat\xF3rio Geral"), /* @__PURE__ */ React.createElement("div", { className: "flex bg-[var(--surface)] rounded-xl p-1 mb-6 gap-1 border border-[var(--border-soft)]" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setAba("chamados"), className: `flex-1 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1 transition-all ${aba === "chamados" ? "bg-[var(--bg-elevated)] text-[var(--gold)] border border-[var(--border)]" : "text-[var(--text-faint)]"}` }, /* @__PURE__ */ React.createElement(AlertTriangle, { size: 14 }), " Chamados", totalAbertos > 0 && /* @__PURE__ */ React.createElement("span", { className: "bg-[var(--red)] text-white rounded-full w-5 h-5 text-[10px] flex items-center justify-center ml-1" }, totalAbertos)), /* @__PURE__ */ React.createElement("button", { onClick: () => setAba("docas"), className: `flex-1 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1 transition-all ${aba === "docas" ? "bg-[var(--bg-elevated)] text-[var(--gold)] border border-[var(--border)]" : "text-[var(--text-faint)]"}` }, /* @__PURE__ */ React.createElement(Box, { size: 14 }), " Docas"), /* @__PURE__ */ React.createElement("button", { onClick: () => setAba("historico"), className: `flex-1 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1 transition-all ${aba === "historico" ? "bg-[var(--bg-elevated)] text-[var(--gold)] border border-[var(--border)]" : "text-[var(--text-faint)]"}` }, /* @__PURE__ */ React.createElement(History, { size: 14 }), " Hist\xF3rico")), aba === "chamados" && /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, chamados.filter(chamadoEstaAtivo).length === 0 && /* @__PURE__ */ React.createElement("p", { className: "text-[var(--text-faint)] text-center py-4 italic text-sm" }, "Nenhum chamado ativo no momento."), chamados.filter(chamadoEstaAtivo).map((c) => {
     const b = badgeChamado(c.status);
     const corBorda = c.status === "aberto" ? "border-l-[var(--red)]" : c.status === "atendendo" ? "border-l-[var(--amber)]" : c.status === "cancelado" ? "border-l-[var(--border)]" : "border-l-[var(--green)]";
     return /* @__PURE__ */ React.createElement("div", { key: c.id, className: `bg-[var(--surface)] p-4 rounded-xl shadow-sm border-l-4 ${corBorda} border-y border-r border-[var(--border-soft)]` }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between items-start mb-1 gap-2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("button", { onClick: () => abrirDetalheDePorId(c.docaId), className: "font-semibold text-[var(--text)] text-left hover:underline" }, /* @__PURE__ */ React.createElement("span", { className: "font-data text-[var(--gold-soft)]" }, "Doca ", c.numeroDoca), " \u2022 ", c.motivo), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-[var(--text-faint)]" }, "Aberto por ", c.donoNome)), /* @__PURE__ */ React.createElement("span", { className: `inline-flex items-center gap-1.5 text-xs font-bold px-2 py-0.5 rounded-full border whitespace-nowrap ${b.classe}` }, /* @__PURE__ */ React.createElement("span", { className: `w-1.5 h-1.5 rounded-full ${b.dot} ${c.status === "aberto" ? "emergency-pulse" : ""}` }), " ", b.texto)), c.mensagem && /* @__PURE__ */ React.createElement("p", { className: "text-sm text-[var(--text-muted)] mb-2" }, c.mensagem), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-[var(--text-faint)] mb-2" }, formatarData(c.criadoEm), c.atendidoPor ? ` \u2022 Atendido por ${c.atendidoPor}` : ""), c.status === "aberto" && /* @__PURE__ */ React.createElement("button", { onClick: () => handleAtender(c), className: "w-full py-2 bg-[var(--amber)] text-[#1A1404] rounded-lg font-bold text-sm hover:brightness-110" }, "Atender Chamado"), c.status === "atendendo" && /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement("button", { onClick: () => handleResolver(c), className: "flex-grow py-2 bg-[var(--green)] text-[#08210F] rounded-lg font-bold text-sm hover:brightness-110 flex items-center justify-center gap-2" }, /* @__PURE__ */ React.createElement(CheckCircle, { size: 16 }), " Marcar como Resolvido"), /* @__PURE__ */ React.createElement("button", { onClick: () => handleLiberar(c), className: "py-2 px-3 bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-muted)] rounded-lg font-semibold text-sm hover:text-[var(--amber)] hover:border-[var(--amber)]/40 flex items-center justify-center gap-1.5", title: "Liberar para outro admin atender" }, /* @__PURE__ */ React.createElement(XCircle, { size: 15 }), " Liberar")));
-  })), aba === "docas" && /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, !mostrarForm && /* @__PURE__ */ React.createElement("button", { onClick: abrirNovaDoca, className: "w-full py-3 bg-[var(--surface)] border border-dashed border-[var(--gold)]/40 text-[var(--gold)] rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-[var(--gold)]/5" }, /* @__PURE__ */ React.createElement(Plus, { size: 17 }), " Nova Doca"), !mostrarForm && docas.length > 0 && /* @__PURE__ */ React.createElement("button", { onClick: () => setConfirmandoApagarTodasDocas(true), className: "w-full py-2.5 bg-[var(--red-bg)] border border-[var(--red)]/40 text-[var(--red)] rounded-lg font-semibold text-sm flex items-center justify-center gap-1.5 hover:bg-[var(--red)]/20" }, /* @__PURE__ */ React.createElement(Trash2, { size: 15 }), " Apagar todas as docas"), mostrarForm && /* @__PURE__ */ React.createElement("div", { className: "bg-[var(--surface)] p-4 rounded-xl shadow-sm border border-[var(--gold)]/30" }, /* @__PURE__ */ React.createElement("h2", { className: "text-base font-display font-bold text-[var(--text)] mb-4 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(Box, { size: 17, className: "text-[var(--gold)]" }), " ", editandoDocaId ? "Editar Doca" : "Cadastrar Nova Doca"), /* @__PURE__ */ React.createElement("div", { className: "mb-3" }, /* @__PURE__ */ React.createElement("label", { className: "flex items-center gap-1 text-[11px] font-bold text-[var(--text-faint)] uppercase tracking-wide mb-1" }, /* @__PURE__ */ React.createElement(User, { size: 13, className: "text-[var(--gold)]/80" }), " Respons\xE1vel"), /* @__PURE__ */ React.createElement(
+  })), aba === "docas" && /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, !mostrarForm && /* @__PURE__ */ React.createElement("button", { onClick: abrirNovaDoca, className: "w-full py-3 bg-[var(--surface)] border border-dashed border-[var(--gold)]/40 text-[var(--gold)] rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-[var(--gold)]/5" }, /* @__PURE__ */ React.createElement(Plus, { size: 17 }), " Nova Doca"), !mostrarForm && docas.length > 0 && /* @__PURE__ */ React.createElement("button", { onClick: () => setConfirmandoApagarTodasDocas(true), className: "w-full py-2.5 bg-[var(--red-bg)] border border-[var(--red)]/40 text-[var(--red)] rounded-lg font-semibold text-sm flex items-center justify-center gap-1.5 hover:bg-[var(--red)]/20" }, /* @__PURE__ */ React.createElement(Trash2, { size: 15 }), " Apagar todas as docas"), !mostrarForm && docas.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement("svg", { xmlns: "http://www.w3.org/2000/svg", width: 15, height: 15, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", className: "absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-faint)]" }, /* @__PURE__ */ React.createElement("circle", { cx: "11", cy: "11", r: "8" }), /* @__PURE__ */ React.createElement("path", { d: "m21 21-4.35-4.35" })), /* @__PURE__ */ React.createElement("input", { type: "search", placeholder: "Pesquisar por doca, respons\xE1vel ou canaliza\xE7\xE3o...", value: filtroDocas, onChange: (e) => setFiltroDocas(e.target.value), className: "w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] rounded-lg py-2.5 px-4 pl-9 outline-none focus:border-[var(--gold)] text-sm placeholder:text-[var(--text-faint)]" })), mostrarForm && /* @__PURE__ */ React.createElement("div", { className: "bg-[var(--surface)] p-4 rounded-xl shadow-sm border border-[var(--gold)]/30" }, /* @__PURE__ */ React.createElement("h2", { className: "text-base font-display font-bold text-[var(--text)] mb-4 flex items-center gap-2" }, /* @__PURE__ */ React.createElement(Box, { size: 17, className: "text-[var(--gold)]" }), " ", editandoDocaId ? "Editar Doca" : "Cadastrar Nova Doca"), /* @__PURE__ */ React.createElement("div", { className: "mb-3" }, /* @__PURE__ */ React.createElement("label", { className: "flex items-center gap-1 text-[11px] font-bold text-[var(--text-faint)] uppercase tracking-wide mb-1" }, /* @__PURE__ */ React.createElement(User, { size: 13, className: "text-[var(--gold)]/80" }), " Respons\xE1vel"), /* @__PURE__ */ React.createElement(
     "input",
     {
       type: "text",
@@ -875,7 +898,7 @@ Pacotes: ${totais.pacotes} | Posi\xE7\xF5es: ${totais.posicoes} | Mangas: ${tota
       value: formDoca[item.campo],
       onChange: (e) => setFormDoca({ ...formDoca, [item.campo]: e.target.value })
     }
-  )))), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement("button", { onClick: handleSalvarDocaAdmin, className: "flex-grow py-3 bg-[var(--gold)] text-[#1A1404] rounded-lg font-bold flex items-center justify-center gap-2 hover:brightness-110 transition-all" }, /* @__PURE__ */ React.createElement(Save, { size: 19 }), " ", editandoDocaId ? "Atualizar Doca" : "Salvar Doca"), /* @__PURE__ */ React.createElement("button", { onClick: fecharFormDoca, className: "py-3 px-4 bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-muted)] rounded-lg font-semibold hover:bg-[var(--border)] transition-all text-sm" }, "Sair"))), docas.length === 0 && !mostrarForm && /* @__PURE__ */ React.createElement("p", { className: "text-[var(--text-faint)] text-center py-4 italic text-sm" }, "Nenhuma doca cadastrada."), docas.map((d) => /* @__PURE__ */ React.createElement("div", { key: d.id, className: "bg-[var(--surface)] p-4 rounded-xl shadow-sm border border-[var(--border-soft)] flex justify-between items-start gap-2" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setDocaDetalhe(d), className: "text-left flex-grow" }, /* @__PURE__ */ React.createElement("p", { className: "font-semibold text-[var(--text)]" }, /* @__PURE__ */ React.createElement("span", { className: "font-data text-[var(--gold-soft)]" }, "Doca ", d.numeroDoca)), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-[var(--text-faint)]" }, d.pacotes || 0, " pacotes \u2022 ", d.posicoes || 0, " posi\xE7\xF5es \u2022 Respons\xE1vel: ", d.donoNome), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-[var(--text-faint)] mt-1" }, "Atualizado em ", formatarData(d.atualizadoEm))), /* @__PURE__ */ React.createElement("div", { className: "flex gap-1 shrink-0" }, /* @__PURE__ */ React.createElement("button", { onClick: (e) => {
+  )))), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement("button", { onClick: handleSalvarDocaAdmin, className: "flex-grow py-3 bg-[var(--gold)] text-[#1A1404] rounded-lg font-bold flex items-center justify-center gap-2 hover:brightness-110 transition-all" }, /* @__PURE__ */ React.createElement(Save, { size: 19 }), " ", editandoDocaId ? "Atualizar Doca" : "Salvar Doca"), /* @__PURE__ */ React.createElement("button", { onClick: fecharFormDoca, className: "py-3 px-4 bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-muted)] rounded-lg font-semibold hover:bg-[var(--border)] transition-all text-sm" }, "Sair"))), docasFiltradas.length === 0 && !mostrarForm && /* @__PURE__ */ React.createElement("p", { className: "text-[var(--text-faint)] text-center py-4 italic text-sm" }, filtroDocas ? "Nenhuma doca encontrada para \"" + filtroDocas + "\"." : "Nenhuma doca cadastrada."), docasFiltradas.map((d) => /* @__PURE__ */ React.createElement("div", { key: d.id, className: "bg-[var(--surface)] p-4 rounded-xl shadow-sm border border-[var(--border-soft)] flex justify-between items-start gap-2" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setDocaDetalhe(d), className: "text-left flex-grow" }, /* @__PURE__ */ React.createElement("p", { className: "font-semibold text-[var(--text)]" }, /* @__PURE__ */ React.createElement("span", { className: "font-data text-[var(--gold-soft)]" }, "Doca ", d.numeroDoca)), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-[var(--text-faint)]" }, d.pacotes || 0, " pacotes \u2022 ", d.posicoes || 0, " posi\xE7\xF5es \u2022 Respons\xE1vel: ", d.donoNome), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-[var(--text-faint)] mt-1" }, "Atualizado em ", formatarData(d.atualizadoEm))), /* @__PURE__ */ React.createElement("div", { className: "flex gap-1 shrink-0" }, /* @__PURE__ */ React.createElement("button", { onClick: (e) => {
     e.stopPropagation();
     abrirEdicaoDoca(d);
   }, className: "p-2 text-[var(--text-faint)] hover:text-[var(--gold)] hover:bg-white/5 rounded-lg", title: "Editar" }, /* @__PURE__ */ React.createElement(Pencil, { size: 16 })), /* @__PURE__ */ React.createElement("button", { onClick: (e) => {
